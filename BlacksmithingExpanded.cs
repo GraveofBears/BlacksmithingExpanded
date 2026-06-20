@@ -21,7 +21,7 @@ namespace BlacksmithingExpanded
     public class BlacksmithingExpanded : BaseUnityPlugin
     {
         internal const string ModName = "Blacksmithing Expanded";
-        internal const string ModVersion = "1.1.3";
+        internal const string ModVersion = "1.1.7";
         internal const string ModGUID = "org.bepinex.plugins.blacksmithingexpanded";
 
         private Harmony harmony;
@@ -71,6 +71,8 @@ namespace BlacksmithingExpanded
         internal static ConfigEntry<int> cfg_InfusionTierInterval;
         internal static ConfigEntry<float> cfg_ChanceExtraItemAt100;
         internal static ConfigEntry<float> cfg_SmelterSaveOreChanceAt100;
+        internal static ConfigEntry<bool> cfg_EnableSmeltingSpeedBonus;
+        internal static ConfigEntry<bool> cfg_EnableKilnSpeedBonus;
         internal static ConfigEntry<float> cfg_SmeltingSpeedBonusPerTier;
         internal static ConfigEntry<float> cfg_KilnSpeedBonusPerTier;
         internal static ConfigEntry<float> cfg_InfusionExpireTime;
@@ -79,6 +81,7 @@ namespace BlacksmithingExpanded
         internal static ConfigEntry<bool> cfg_ShowInfusionInTooltip;
         internal static ConfigEntry<float> cfg_FirstCraftBonusXP;
         internal static ConfigEntry<float> UpgradeBonus;
+        internal static ConfigEntry<bool> cfg_EnableStationLevelBonus;
 
         // YAML Configuration
         internal static ConfigEntry<bool> cfg_UseYamlFiltering;
@@ -91,8 +94,11 @@ namespace BlacksmithingExpanded
         internal static ConfigEntry<bool> cfg_RespectOriginalDurability;
         internal static ConfigEntry<float> cfg_MaxDurabilityCap;
         internal static ConfigEntry<bool> cfg_AllowNonRepairableItems;
+        internal static ConfigEntry<bool> cfg_EnableDurabilityBonus;
 
         // Armor & Weapons
+        internal static ConfigEntry<bool> cfg_EnableDamageBonus;
+        internal static ConfigEntry<bool> cfg_EnableArmorBonus;
         internal static ConfigEntry<int> cfg_StatTierInterval;
         internal static ConfigEntry<float> cfg_ArmorBonusPerTier;
         internal static ConfigEntry<float> cfg_ArmorBonusPerUpgrade;
@@ -105,6 +111,7 @@ namespace BlacksmithingExpanded
         internal static ConfigEntry<float> cfg_StatPercentageBonusPerUpgrade;
 
         // Elemental
+        internal static ConfigEntry<bool> cfg_EnableElementalBonus;
         internal static ConfigEntry<bool> cfg_AlwaysAddElementalAtMax;
         internal static ConfigEntry<int> cfg_ElementalUnlockLevel;
         internal static ConfigEntry<float> cfg_FireBonusPerTier;
@@ -118,10 +125,15 @@ namespace BlacksmithingExpanded
         internal static ConfigEntry<float> cfg_ElementalPercentageBonusPerTier;
 
         // Shields
+        internal static ConfigEntry<bool> cfg_EnableShieldBonus;
         internal static ConfigEntry<float> cfg_TimedBlockBonusPerTier;
         internal static ConfigEntry<float> cfg_TimedBlockBonusPerUpgrade;
         internal static ConfigEntry<float> cfg_BlockPowerBonusPerTier;
         internal static ConfigEntry<float> cfg_BlockPowerBonusPerUpgrade;
+
+        // Bonus features
+        internal static ConfigEntry<bool> cfg_EnableExtraItemBonus;
+        internal static ConfigEntry<bool> cfg_EnableOreSaveBonus;
 
         // XP
         internal static ConfigEntry<float> cfg_XPPerCraft;
@@ -494,13 +506,13 @@ namespace BlacksmithingExpanded
                     .GetMethod("MemberwiseClone", BindingFlags.Instance | BindingFlags.NonPublic)
                     .Invoke(originalShared, null);
 
-                if (maxDurability > 0f)
+                if (cfg_EnableDurabilityBonus.Value && maxDurability > 0f)
                 {
                     Item.m_shared.m_maxDurability = maxDurability;
                     Item.m_durability = Mathf.Min(Item.m_durability, maxDurability);
                 }
 
-                if (armorBonus > 0f)
+                if (cfg_EnableArmorBonus.Value && armorBonus > 0f)
                 {
                     Item.m_shared.m_armor = baseStats.armor + armorBonus;
                 }
@@ -534,6 +546,8 @@ namespace BlacksmithingExpanded
             cfg_SkillGainFactor = AddConfig("General", "Skill gain factor", 1f, "Multiplier for blacksmithing XP gain rate (1.5 = 50% faster leveling)");
             cfg_SkillEffectFactor = AddConfig("General", "Skill effect factor", 1f, "Global multiplier for all blacksmithing bonuses (damage, armor, durability, etc). Higher = stronger effects");
             cfg_InfusionTierInterval = AddConfig("General", "Workstation infusion milestone interval", 10, "Every X blacksmithing levels unlocks a new tier of smelter/kiln speed bonus");
+            cfg_EnableSmeltingSpeedBonus = AddConfig("General", "Enable smelting speed bonus", true, "Enable/disable smelter (and blast furnace) speed bonuses. Disable this if you have other mods that modify smelter speeds to prevent conflicts");
+            cfg_EnableKilnSpeedBonus = AddConfig("General", "Enable kiln speed bonus", true, "Enable/disable kiln speed bonuses. Disable this if you have other mods that modify kiln speeds to prevent conflicts");
             cfg_SmeltingSpeedBonusPerTier = AddConfig("General", "Smelting speed bonus per tier", 0.15f, "Speed bonus per tier - 0.15 = 15% faster smelting. Stacks with each tier");
             cfg_KilnSpeedBonusPerTier = AddConfig("General", "Kiln speed bonus per tier", 0.15f, "Speed bonus per tier - 0.15 = 15% faster charcoal production. Stacks with each tier");
             cfg_InfusionExpireTime = AddConfig("General", "Infusion expire time", 300f, "Seconds that speed bonuses last after adding fuel/ore to smelters/kilns (300 = 5 minutes)");
@@ -542,6 +556,7 @@ namespace BlacksmithingExpanded
             cfg_ChanceExtraItemAt100 = AddConfig("General", "Extra item chance at 100", 0.05f, "At level 100: chance to get bonus item when crafting (0.05 = 5% chance for double output)");
             cfg_UsePercentageUpgradeBonus = AddConfig("PercentageSystem", "Use percentage upgrade bonus", true, "If enabled, upgrade bonuses are percentage-based instead of flat. When disabled, uses flat bonuses");
             cfg_StatPercentageBonusPerUpgrade = AddConfig("PercentageSystem", "Stat percentage bonus per upgrade", 5f, "Percentage bonus per upgrade level when using percentage upgrade system (5 = 5% per upgrade level)");
+            cfg_EnableStationLevelBonus = AddConfig("General", "Enable station level bonus", true, "Allow blacksmithing skill to add virtual levels to workbenches and forges");
 
             cfg_UseYamlFiltering = AddConfig("Item Filtering", "Use YAML item filtering", true, "Enable custom whitelist/blacklist system via BlacksmithExpItemList.yml file");
             cfg_LogFilteredItems = AddConfig("Item Filtering", "Log filtered items", false, "Write to console when items are blocked by whitelist/blacklist filters");
@@ -561,7 +576,10 @@ namespace BlacksmithingExpanded
             cfg_RespectOriginalDurability = AddConfig("Durability", "Respect original durability", true, "Only boost durability on items that already have durability (prevents boosting consumables/arrows)");
             cfg_MaxDurabilityCap = AddConfig("Durability", "Max durability cap", 2000f, "Maximum durability any item can reach (0 = no limit)");
             cfg_AllowNonRepairableItems = AddConfig("Durability", "Allow non-repairable items", false, "Allow blacksmithing bonuses on items with no durability (torches, consumables, etc.)");
+            cfg_EnableDurabilityBonus = AddConfig("Durability", "Enable durability bonus", true, "Enable/disable the blacksmithing durability bonus entirely. Disable this if other mods manage durability to prevent conflicts (also fixes modded armor losing durability on login)");
 
+            cfg_EnableDamageBonus = AddConfig("Stats", "Enable damage bonus", true, "Enable/disable the blacksmithing damage bonus entirely. Disable if other mods handle weapon damage scaling to prevent conflicts");
+            cfg_EnableArmorBonus = AddConfig("Stats", "Enable armor bonus", true, "Enable/disable the blacksmithing armor bonus entirely. Disable if other mods handle armor scaling to prevent conflicts");
             cfg_BoostElementalWeapons = AddConfig("Stats", "Boost elemental weapons", true, "Allow boosting weapons that already have elemental damage (like Frostner)");
             cfg_ElementalWeaponBoostChance = AddConfig("Stats", "Elemental weapon boost chance", 0.25f, "For weapons with both physical and elemental damage: chance to boost elemental instead of physical (0.25 = 25% chance)");
 
@@ -574,6 +592,7 @@ namespace BlacksmithingExpanded
             cfg_DamageBonusPerTier = AddConfig("Stats", "Damage bonus per tier", 5, "Flat damage bonus added per stat tier. Applied to one random damage type (slash/pierce/blunt). Only used if percentage system is disabled");
             cfg_StatBonusPerUpgrade = AddConfig("Stats", "Stat bonus per upgrade", 4f, "Extra damage/armor bonus per item quality level (star rating). Only used if percentage upgrade system is disabled");
 
+            cfg_EnableElementalBonus = AddConfig("Elemental", "Enable elemental bonus", true, "Enable/disable the blacksmithing elemental damage bonus entirely. Disable if other mods handle elemental damage to prevent conflicts");
             cfg_AlwaysAddElementalAtMax = AddConfig("Elemental", "Add elemental at milestone", true, "Automatically add random elemental damage when reaching elemental unlock level");
             cfg_ElementalUnlockLevel = AddConfig("Elemental", "Elemental unlock level", 75, "Blacksmithing level required to add elemental damage bonuses to weapons");
             cfg_FireBonusPerTier = AddConfig("Elemental", "Fire bonus per tier", 3f, "Fire damage points per tier (causes burning damage over time)");
@@ -584,10 +603,14 @@ namespace BlacksmithingExpanded
             cfg_UsePercentageElementalBonus = AddConfig("PercentageSystem", "Use percentage elemental bonus", true, "If enabled, elemental bonuses are percentage-based instead of flat. Much more balanced for all weapon types");
             cfg_ElementalPercentageBonusPerTier = AddConfig("PercentageSystem", "Elemental percentage bonus per tier", 0.75f, "Percentage elemental bonus per tierwhen using percentage system (0.75 = 0.75% per tier)");
 
+            cfg_EnableShieldBonus = AddConfig("Shields", "Enable shield bonus", true, "Enable/disable the blacksmithing shield block power and parry bonuses entirely. Disable if other mods handle shield stats to prevent conflicts");
             cfg_TimedBlockBonusPerTier = AddConfig("Shields", "Timed block bonus per tier", 0.01f, "Parry/perfect block bonus per tier (0.01 = 1% better parry window/damage)");
             cfg_TimedBlockBonusPerUpgrade = AddConfig("Shields", "Timed block bonus per upgrade", 0.05f, "Extra parry bonus per shield quality level (star rating)");
             cfg_BlockPowerBonusPerTier = AddConfig("Shields", "Block power bonus per tier", 1f, "Block strength points per tier (reduces stamina cost when blocking)");
             cfg_BlockPowerBonusPerUpgrade = AddConfig("Shields", "Block power bonus per upgrade", 1f, "Extra block power per shield quality level (star rating)");
+
+            cfg_EnableExtraItemBonus = AddConfig("General", "Enable extra item bonus", true, "Enable/disable the chance to receive a bonus crafted item at high blacksmithing levels");
+            cfg_EnableOreSaveBonus = AddConfig("General", "Enable ore save bonus", true, "Enable/disable the chance to save ore when smelting at high blacksmithing levels");
         }
 
         private void InitializeYamlFiltering()
@@ -905,7 +928,7 @@ Blacklist:
                 int statTier = level / cfg_StatTierInterval.Value;
                 int durabilityTier = level / cfg_DurabilityTierInterval.Value;
 
-                if (hasOriginalDurability || cfg_AllowNonRepairableItems.Value)
+                if (cfg_EnableDurabilityBonus.Value && (hasOriginalDurability || cfg_AllowNonRepairableItems.Value))
                 {
                     bool shouldApplyDurability = (cfg_RespectOriginalDurability.Value && hasOriginalDurability) ||
                                                !cfg_RespectOriginalDurability.Value ||
@@ -923,9 +946,12 @@ Blacklist:
                     }
                 }
 
-                ApplyDamageBonuses(item, baseStats, statTier, data);
+                if (cfg_EnableDamageBonus.Value)
+                {
+                    ApplyDamageBonuses(item, baseStats, statTier, data);
+                }
 
-                if (baseStats.armor > 0f)
+                if (cfg_EnableArmorBonus.Value && baseStats.armor > 0f)
                 {
                     float armorTierBonus = statTier * cfg_ArmorBonusPerTier.Value;
                     float armorUpgradeBonus;
@@ -945,7 +971,7 @@ Blacklist:
                         data.armorBonus = cfg_ArmorCap.Value - baseStats.armor;
                 }
 
-                if (item.m_shared.m_itemType == ItemDrop.ItemData.ItemType.Shield)
+                if (cfg_EnableShieldBonus.Value && item.m_shared.m_itemType == ItemDrop.ItemData.ItemType.Shield)
                 {
                     if (item.m_shared.m_blockPower > 0f)
                     {
@@ -960,7 +986,7 @@ Blacklist:
                     }
                 }
 
-                if (level >= cfg_ElementalUnlockLevel.Value && cfg_AlwaysAddElementalAtMax.Value && item.IsWeapon())
+                if (cfg_EnableElementalBonus.Value && level >= cfg_ElementalUnlockLevel.Value && cfg_AlwaysAddElementalAtMax.Value && item.IsWeapon())
                 {
                     if (!string.IsNullOrEmpty(preservedInfusion))
                     {
@@ -1297,7 +1323,7 @@ Blacklist:
                         Debug.Log($"[BlacksmithingExpanded] Crafted {craftedItem.m_shared.m_name}: level={level}, quality={craftedItem.m_quality}, xp={xpEarned:F2}");
                     }
 
-                    if (ItemEligibilityCache.IsEligibleForBlacksmithingBonuses(craftedItem))
+                    if (cfg_EnableExtraItemBonus.Value && ItemEligibilityCache.IsEligibleForBlacksmithingBonuses(craftedItem))
                     {
                         float extraChance = cfg_ChanceExtraItemAt100.Value * (level / 100f);
                         if (UnityEngine.Random.value <= extraChance)
@@ -1342,6 +1368,9 @@ Blacklist:
         {
             static void Postfix(CraftingStation __instance, ref int __result)
             {
+                // Check if feature is enabled
+                if (!cfg_EnableStationLevelBonus.Value) return;
+
                 if (!__instance.m_craftRequireRoof && __instance.m_rangeBuild > 0f)
                 {
                     var player = Player.m_localPlayer;
@@ -1359,25 +1388,31 @@ Blacklist:
 
             private static int CalculateWorkbenchBonus(string stationName, int level)
             {
-                string lowerName = stationName.ToLower();
+                // Use exact matching instead of partial matching
+                switch (stationName)
+                {
+                    // Workbenches
+                    case "piece_workbench":
+                        if (level >= 20) return 2;
+                        if (level >= 10) return 1;
+                        return 0;
 
-                if (lowerName.Contains("workbench"))
-                {
-                    if (level >= 20) return 2;
-                    if (level >= 10) return 1;
-                }
-                else if (lowerName.Contains("forge") && !lowerName.Contains("black"))
-                {
-                    if (level >= 40) return 2;
-                    if (level >= 30) return 1;
-                }
-                else if (lowerName.Contains("black") || lowerName.Contains("galdr"))
-                {
-                    if (level >= 60) return 2;
-                    if (level >= 50) return 1;
-                }
+                    // Forges (not black forges)
+                    case "forge":
+                        if (level >= 40) return 2;
+                        if (level >= 30) return 1;
+                        return 0;
 
-                return 0;
+                    // Black forges and Galdr tables
+                    case "blackforge":
+                    case "piece_galdrtable":
+                        if (level >= 60) return 2;
+                        if (level >= 50) return 1;
+                        return 0;
+
+                    default:
+                        return 0;
+                }
             }
         }
 
@@ -1528,75 +1563,121 @@ Blacklist:
         {
             static void Postfix(Smelter __instance, Humanoid user, bool __result)
             {
-                if (!__result || !(user is Player player)) return;
-
-                GiveBlacksmithingXP(player, cfg_XPPerSmelt.Value);
-
-                var zdo = __instance.m_nview?.GetZDO();
-                if (zdo == null) return;
-
-                bool isKiln = __instance.m_name.Contains("charcoal_kiln");
-                bool isBlastFurnace = __instance.m_name.Contains("blastfurnace");
-
-                int level = GetPlayerBlacksmithingLevel(player);
-                int tier = level / cfg_InfusionTierInterval.Value;
-
-                if (tier <= 0) return;
-
-                float speedBonusPerTier = isKiln ? cfg_KilnSpeedBonusPerTier.Value : cfg_SmeltingSpeedBonusPerTier.Value;
-                float speedMultiplier = 1f + (tier * speedBonusPerTier);
-
-                var infusion = new WorkstationInfusion
+                try
                 {
-                    tier = tier,
-                    timestamp = Time.time,
-                    originalSpeed = __instance.m_secPerProduct,
-                    bonusSpeed = __instance.m_secPerProduct / speedMultiplier
-                };
+                    if (!__result || !(user is Player player)) return;
 
-                bool isNewInfusion = false;
+                    GiveBlacksmithingXP(player, cfg_XPPerSmelt.Value);
 
-                if (isKiln)
-                {
-                    if (kilnInfusions.ContainsKey(zdo.m_uid))
+                    var zdo = __instance.m_nview?.GetZDO();
+                    if (zdo == null) return;
+
+                    bool isKiln = __instance.m_name.Contains("charcoal_kiln");
+                    bool isBlastFurnace = __instance.m_name.Contains("blastfurnace");
+
+                    // Check if speed bonus is enabled for this workstation type
+                    if (isKiln && !cfg_EnableKilnSpeedBonus.Value) return;
+                    if (!isKiln && !cfg_EnableSmeltingSpeedBonus.Value) return;
+
+                    int level = GetPlayerBlacksmithingLevel(player);
+
+                    // Safety check: prevent division by zero if tier interval is 0
+                    if (cfg_InfusionTierInterval.Value <= 0)
                     {
-                        kilnInfusions[zdo.m_uid].timestamp = Time.time;
-                        kilnInfusions[zdo.m_uid].tier = tier;
+                        Debug.LogWarning($"[BlacksmithingExpanded] Invalid tier interval ({cfg_InfusionTierInterval.Value}). " +
+                            $"Must be greater than 0. Speed bonuses will not be applied.");
+                        return;
+                    }
+
+                    int tier = level / cfg_InfusionTierInterval.Value;
+
+                    if (tier <= 0) return;
+
+                    float speedBonusPerTier = isKiln ? cfg_KilnSpeedBonusPerTier.Value : cfg_SmeltingSpeedBonusPerTier.Value;
+                    float speedMultiplier = 1f + (tier * speedBonusPerTier);
+
+                    // Safety check: prevent division by zero and invalid multipliers
+                    if (speedMultiplier <= 0f)
+                    {
+                        string workstationType = isKiln ? "kiln" : (isBlastFurnace ? "blast furnace" : "smelter");
+                        Debug.LogWarning($"[BlacksmithingExpanded] Invalid speed multiplier ({speedMultiplier}) for {workstationType}. " +
+                            $"This may be caused by conflicting mods modifying {workstationType} speeds. " +
+                            $"Consider disabling 'Enable {(isKiln ? "kiln" : "smelting")} speed bonus' in the config.");
+                        return;
+                    }
+
+                    // Additional safety: check if original speed is valid
+                    if (__instance.m_secPerProduct <= 0f)
+                    {
+                        string workstationType = isKiln ? "kiln" : (isBlastFurnace ? "blast furnace" : "smelter");
+                        Debug.LogWarning($"[BlacksmithingExpanded] Invalid original {workstationType} speed ({__instance.m_secPerProduct}). " +
+                            $"This may indicate a conflict with another mod. " +
+                            $"Consider disabling 'Enable {(isKiln ? "kiln" : "smelting")} speed bonus' in the config.");
+                        return;
+                    }
+
+                    var infusion = new WorkstationInfusion
+                    {
+                        tier = tier,
+                        timestamp = Time.time,
+                        originalSpeed = __instance.m_secPerProduct,
+                        bonusSpeed = __instance.m_secPerProduct / speedMultiplier
+                    };
+
+                    bool isNewInfusion = false;
+
+                    if (isKiln)
+                    {
+                        if (kilnInfusions.ContainsKey(zdo.m_uid))
+                        {
+                            kilnInfusions[zdo.m_uid].timestamp = Time.time;
+                            kilnInfusions[zdo.m_uid].tier = tier;
+                        }
+                        else
+                        {
+                            kilnInfusions[zdo.m_uid] = infusion;
+                            isNewInfusion = true;
+                        }
+                    }
+                    else if (isBlastFurnace)
+                    {
+                        blastFurnaceInfusions[zdo.m_uid] = infusion;
+                        isNewInfusion = true;
                     }
                     else
                     {
-                        kilnInfusions[zdo.m_uid] = infusion;
+                        smelterInfusions[zdo.m_uid] = infusion;
                         isNewInfusion = true;
                     }
-                }
-                else if (isBlastFurnace)
-                {
-                    blastFurnaceInfusions[zdo.m_uid] = infusion;
-                    isNewInfusion = true;
-                }
-                else
-                {
-                    smelterInfusions[zdo.m_uid] = infusion;
-                    isNewInfusion = true;
-                }
 
-                if (!isKiln)
-                {
-                    float saveChance = cfg_SmelterSaveOreChanceAt100.Value * (level / 100f);
-                    if (UnityEngine.Random.value <= saveChance)
+                    if (cfg_EnableOreSaveBonus.Value && !isKiln)
                     {
-                        if (__instance.GetFuel() < __instance.m_maxFuel)
+                        float saveChance = cfg_SmelterSaveOreChanceAt100.Value * (level / 100f);
+                        if (UnityEngine.Random.value <= saveChance)
                         {
-                            __instance.m_nview.GetZDO().Set("fuel", __instance.GetFuel() + 1f);
+                            if (__instance.GetFuel() < __instance.m_maxFuel)
+                            {
+                                __instance.m_nview.GetZDO().Set("fuel", __instance.GetFuel() + 1f);
+                            }
                         }
                     }
+
+                    __instance.m_secPerProduct = infusion.bonusSpeed;
+
+                    if (isNewInfusion)
+                    {
+                        ManageInfusionGlow(__instance.transform, zdo.m_uid, true);
+                    }
                 }
-
-                __instance.m_secPerProduct = infusion.bonusSpeed;
-
-                if (isNewInfusion)
+                catch (DivideByZeroException ex)
                 {
-                    ManageInfusionGlow(__instance.transform, zdo.m_uid, true);
+                    Debug.LogError($"[BlacksmithingExpanded] Division by zero in smelting speed bonus calculation. " +
+                        $"Please check your config values (Tier Interval, Speed Bonus Per Tier). " +
+                        $"Consider disabling speed bonuses if the issue persists. Error: {ex.Message}");
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogError($"[BlacksmithingExpanded] Unexpected error in Patch_Smelter_AddOre: {ex}");
                 }
             }
         }
@@ -1611,6 +1692,10 @@ Blacklist:
 
                 bool isKiln = __instance.m_name.Contains("charcoal_kiln");
                 bool isBlastFurnace = __instance.m_name.Contains("blastfurnace");
+
+                // Check if speed bonus is enabled for this workstation type
+                if (isKiln && !cfg_EnableKilnSpeedBonus.Value) return;
+                if (!isKiln && !cfg_EnableSmeltingSpeedBonus.Value) return;
 
                 if (isKiln)
                 {
@@ -1651,8 +1736,18 @@ Blacklist:
                     }
                     else
                     {
-                        blastFurnace.m_secPerProduct = infusion.bonusSpeed;
-                        infusion.wasActive = true;
+                        // Safety check: ensure bonusSpeed is valid
+                        if (infusion.bonusSpeed > 0f)
+                        {
+                            blastFurnace.m_secPerProduct = infusion.bonusSpeed;
+                            infusion.wasActive = true;
+                        }
+                        else
+                        {
+                            Debug.LogWarning($"[BlacksmithingExpanded] Invalid bonus speed detected for blast furnace. Reverting to original speed.");
+                            blastFurnace.m_secPerProduct = originalBlastFurnaceSpeeds[zdo.m_uid];
+                            blastFurnaceInfusions.Remove(zdo.m_uid);
+                        }
                     }
                 }
                 else
@@ -1680,7 +1775,17 @@ Blacklist:
                     }
                     else
                     {
-                        kiln.m_secPerProduct = infusion.bonusSpeed;
+                        // Safety check: ensure bonusSpeed is valid
+                        if (infusion.bonusSpeed > 0f)
+                        {
+                            kiln.m_secPerProduct = infusion.bonusSpeed;
+                        }
+                        else
+                        {
+                            Debug.LogWarning($"[BlacksmithingExpanded] Invalid bonus speed detected for kiln. Reverting to original speed.");
+                            kiln.m_secPerProduct = originalKilnSpeeds[zdo.m_uid];
+                            kilnInfusions.Remove(zdo.m_uid);
+                        }
                     }
                 }
                 else
@@ -1714,8 +1819,18 @@ Blacklist:
                     }
                     else
                     {
-                        smelter.m_secPerProduct = infusion.bonusSpeed;
-                        infusion.wasActive = true;
+                        // Safety check: ensure bonusSpeed is valid
+                        if (infusion.bonusSpeed > 0f)
+                        {
+                            smelter.m_secPerProduct = infusion.bonusSpeed;
+                            infusion.wasActive = true;
+                        }
+                        else
+                        {
+                            Debug.LogWarning($"[BlacksmithingExpanded] Invalid bonus speed detected for smelter. Reverting to original speed.");
+                            smelter.m_secPerProduct = originalSmelterSpeeds[zdo.m_uid];
+                            smelterInfusions.Remove(zdo.m_uid);
+                        }
                     }
                 }
                 else
@@ -1914,13 +2029,13 @@ Blacklist:
         {
             var baseStats = GetBaseStats(item);
 
-            if (data.maxDurability > 0f)
+            if (cfg_EnableDurabilityBonus.Value && data.maxDurability > 0f)
             {
                 item.m_shared.m_maxDurability = data.maxDurability;
                 item.m_durability = Mathf.Min(item.m_durability, data.maxDurability);
             }
 
-            if (data.armorBonus > 0f)
+            if (cfg_EnableArmorBonus.Value && data.armorBonus > 0f)
             {
                 item.m_shared.m_armor = baseStats.armor + data.armorBonus;
             }
